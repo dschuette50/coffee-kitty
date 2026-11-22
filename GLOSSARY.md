@@ -26,6 +26,10 @@ with a line "Avoid:", which lists words not to use for the concept.
 - **coffee count**: A user's total number of coffees. The number starts at zero when the user is created. Adding a
   coffee raises it by one, and an undo lowers it by one.
   API: `ConsumptionDto.count`. Code: `CoffeeConsumption.count`, `coffee_consumptions.count`.
+- **cash deposit**: Cash received from a user and recorded by an administrator. It credits the user's personal
+  balance and the kitty's cash balance by the same amount.
+- **personal balance**: A user's financial position with the kitty. A negative balance represents debt.
+- **kitty cash balance**: The total cash held by the shared kitty.
 - **consumption**: The stored record that holds the coffee count of one user and the time of each recent coffee that the
   user did not undo. Adding a coffee drops the times whose grace period has passed. Every user has exactly one such
   record, which `UserService.create` or `UserInternalService.create` creates together with the user.
@@ -117,7 +121,7 @@ with a line "Avoid:", which lists words not to use for the concept.
   file that it has not applied to the database before, in version order. A migration that others have applied, such as
   a pushed migration, must not change (CLAUDE.md, Database).
   Code: `V1__create_users_table.sql`, `V2__create_coffee_consumptions_table.sql`.
-- **data reset**: The deletion of all consumptions and then all users through the internal port `DataResetService`.
+- **data reset**: Clearing deposits, the kitty cash balance, consumptions, and users through `DataResetService`.
   The fixture loader runs this deletion when `reset-on-startup` is true, and the data integration, system, and
   acceptance tests run it before each test. A client cannot delete the data through the API.
   Code: `DataResetService.clearAll`.

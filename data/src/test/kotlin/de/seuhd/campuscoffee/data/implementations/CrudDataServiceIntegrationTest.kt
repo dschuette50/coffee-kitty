@@ -3,14 +3,19 @@ package de.seuhd.campuscoffee.data.implementations
 import de.seuhd.campuscoffee.data.integration.AbstractDataIntegrationTest
 import de.seuhd.campuscoffee.domain.exceptions.DuplicationException
 import de.seuhd.campuscoffee.domain.exceptions.NotFoundException
+import de.seuhd.campuscoffee.domain.model.CashDeposit
 import de.seuhd.campuscoffee.domain.model.CoffeeConsumption
 import de.seuhd.campuscoffee.domain.model.User
+import de.seuhd.campuscoffee.domain.ports.data.CashDepositDataService
 import de.seuhd.campuscoffee.domain.ports.data.CoffeeConsumptionDataService
+import de.seuhd.campuscoffee.domain.ports.data.KittyCashBalanceDataService
 import de.seuhd.campuscoffee.domain.ports.data.UserDataService
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.IllegalTransactionStateException
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.LocalDateTime
@@ -39,6 +44,73 @@ class CrudDataServiceIntegrationTest : AbstractDataIntegrationTest() {
 
     @Autowired
     private lateinit var transactionTemplate: TransactionTemplate
+
+    @Autowired
+    private lateinit var deposits: CashDepositDataService
+
+    @Autowired
+    private lateinit var kitty: KittyCashBalanceDataService
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
+
+    @Test
+    fun `V5 preserves V4 users and coffee counts and assigns zero opening personal balances`() {
+        val schema = "cash_deposit_upgrade"
+        val config =
+            Flyway
+                .configure()
+                .dataSource(requireNotNull(jdbc.dataSource))
+                .schemas(schema)
+                .cleanDisabled(false)
+        try {
+            config.target("4").load().migrate()
+            val id = UUID.randomUUID()
+            jdbc.update(
+                "INSERT INTO $schema.users " +
+                    "(id, created_at, updated_at, login_name, email_address, first_name, last_name) " +
+                    "VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'alice', 'alice@se.de', 'Alice', 'Example')",
+                id
+            )
+            jdbc.update(
+                "INSERT INTO $schema.coffee_consumptions (id, created_at, updated_at, user_id, count) " +
+                    "VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, 7)",
+                UUID.randomUUID(),
+                id
+            )
+
+            config.target("5").load().migrate()
+
+            val user = jdbc.queryForMap("SELECT * FROM $schema.users WHERE id = ?", id)
+            assertThat(user)
+                .containsEntry("login_name", "alice")
+                .containsEntry("personal_balance_cents", 0L)
+                .containsEntry("deactivated", false)
+            val count = jdbc.queryForObject("SELECT count FROM $schema.coffee_consumptions", Int::class.java)
+            assertThat(count).isEqualTo(7)
+            assertThat(jdbc.queryForList("SELECT * FROM $schema.kitty_cash_balance")).isEmpty()
+            assertThat(jdbc.queryForList("SELECT * FROM $schema.cash_deposits")).isEmpty()
+        } finally {
+            config.load().clean()
+        }
+    }
+
+    @Test
+    fun `updates of cash balance and deposit without timestamps preserve creation times`() {
+        val recipient = userDataService.upsert(user("recipient"))
+        val recorder = userDataService.upsert(user("recorder"))
+        val deposit = deposits.upsert(CashDeposit(amountCents = 1, recipient = recipient, recordedBy = recorder))
+        val updatedDeposit = deposits.upsert(deposit.copy(amountCents = 2, createdAt = null, updatedAt = null))
+        assertThat(updatedDeposit.createdAt).isNotNull().isEqualTo(deposit.createdAt)
+        assertThat(updatedDeposit.amountCents).isEqualTo(2L)
+
+        transactionTemplate.executeWithoutResult {
+            val opened = kitty.getForUpdate()
+            val credited = kitty.upsert(opened.copy(balanceCents = 2, createdAt = null, updatedAt = null))
+            assertThat(credited.createdAt).isNotNull().isEqualTo(opened.createdAt)
+            assertThat(credited.balanceCents).isEqualTo(2L)
+        }
+    }
 
     private fun user(
         loginName: String,

@@ -142,8 +142,8 @@ another Gradle version, ignore the offer and select the local installation.
 
 ## Test fixtures (dev)
 
-On every start in the `dev` profile, the fixture loader deletes all users and consumptions and then creates five
-fixture users with a coffee count of zero. Their login names are `jane_doe`, `maxmustermann`, `student2023`,
+On every start in the `dev` profile, the fixture loader clears users, consumptions, deposits, and the kitty cash
+balance, then creates five fixture users with a coffee count and personal balance of zero. Their login names are `jane_doe`, `maxmustermann`, `student2023`,
 `lisa_lee`, and `olivia_lee`. The fixture users get random ids, which change with every restart. `GET /api/users` lists
 the current ids. `domain/src/main/kotlin/de/seuhd/campuscoffee/domain/tests/TestFixtures.kt` defines the fixture users,
 and the system and acceptance tests create the same users before each test.
@@ -227,6 +227,25 @@ fields `errorCode`, `message`, `statusCode`, `statusMessage`, `timestamp`, and `
 `errorCode` is the class name of the exception: `NotFoundException`, `DuplicationException`, `ConflictException`,
 `ForbiddenException`, or `ValidationException`. For any other error, `errorCode` is the reason phrase of the status
 without spaces, such as `BadRequest`. Every timestamp in a response is in UTC and has no offset.
+
+### Record a cash deposit (FR-5)
+
+`POST /users/{userId}/cash-deposits` records cash received from the recipient, who may be deactivated.
+Send a JSON euro amount from €0.01 through €1,000.00 with at most two decimal places.
+
+```shell
+curl --request POST "http://localhost:8081/api/users/$USER_ID/cash-deposits" \
+  --header 'X-Acting-User: jane_doe' \
+  --header 'Content-Type: application/json' \
+  --data '{"amount":12.50}'
+```
+
+The server returns 201 Created with the deposit ID, recipient ID, recorder ID, amount in euros, and UTC timestamps.
+Invalid amounts return 400, missing or unknown actors return 401, non-administrators return 403, and unknown
+recipients return 404.
+
+Knowing an administrator's login name is sufficient to impersonate that administrator through `X-Acting-User`.
+Every successful POST records a separate deposit. Retrying a POST after a lost response can record a duplicate.
 
 ## Testing
 

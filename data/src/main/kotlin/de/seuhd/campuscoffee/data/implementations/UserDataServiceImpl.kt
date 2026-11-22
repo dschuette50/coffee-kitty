@@ -3,9 +3,12 @@ package de.seuhd.campuscoffee.data.implementations
 import de.seuhd.campuscoffee.data.mapper.UserEntityMapper
 import de.seuhd.campuscoffee.data.persistence.entities.UserEntity
 import de.seuhd.campuscoffee.data.persistence.repositories.UserRepository
+import de.seuhd.campuscoffee.domain.exceptions.NotFoundException
 import de.seuhd.campuscoffee.domain.model.User
 import de.seuhd.campuscoffee.domain.ports.data.UserDataService
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 /**
@@ -28,6 +31,10 @@ class UserDataServiceImpl(
      * [CrudDataServiceImpl.getAll] orders by creation time.
      */
     override fun getAll(): List<User> = repository.findAllByOrderByLoginNameAsc().map { mapper.fromEntity(it) }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    override fun getByIdForUpdate(id: UUID): User =
+        repository.findForUpdateById(id)?.let(mapper::fromEntity) ?: throw NotFoundException(User::class.java, id)
 
     override fun getByLoginName(loginName: String): User =
         findByFieldOrThrow({ repository.findByLoginName(loginName) }, "login name", loginName)

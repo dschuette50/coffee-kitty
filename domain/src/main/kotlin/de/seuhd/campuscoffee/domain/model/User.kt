@@ -21,7 +21,9 @@ data class User(
     val emailAddress: String,
     val firstName: String,
     val lastName: String,
-    val role: Role = Role.USER
+    val role: Role = Role.USER,
+    val personalBalanceCents: Long = 0,
+    val deactivated: Boolean = false
 ) : DomainModel<UUID> {
     /** The limits that every new user must meet. */
     companion object {

@@ -84,6 +84,10 @@ times whose grace period has passed. The data module stores the list in the tabl
 `GracePeriod` read the time from the `Clock` bean of `ClockConfiguration`. `ConsumptionProperties` binds the grace
 period, `campus-coffee.consumption.grace-period`, with a default of 5 minutes.
 
+`CashDepositService` records deposits through `CashDepositDataService`, `KittyCashBalanceDataService`, and
+`UserDataService`. In one transaction, `CashDepositServiceImpl` locks the recipient first, initializes and locks the
+singleton kitty cash balance, updates both balances, and stores the deposit.
+
 ### Generic Base Classes
 
 `CrudDataServiceImpl` is the base class of the data adapters. `CrudDataServiceImpl.upsert` inserts a domain object
@@ -360,7 +364,8 @@ a `@Service` needs a bean for each port that it uses.
 10. Create the DTO in `api/.../dtos/` and the DTO mapper in `api/.../mapper/`. The DTO implements `Dto<UUID>` and has
     a nullable `id`, `createdAt`, and `updatedAt`, which the OpenAPI definition marks as read-only (see `UserDto`).
 11. Create the controller in `api/.../controller/`. An endpoint that creates an object rejects a body with an `id` and
-    returns 201 Created with a `Location` header (see `UserController.create`).
+    returns 201 Created with a `Location` header (see `UserController.create`). The cash deposit POST is an exception.
+    It returns 201 Created with the recorded details in the body and omits `Location` because deposits have no GET endpoint.
 12. Add tests: a domain unit test modeled on `UserServiceTest`, cases in `CrudDataServiceIntegrationTest`, and a system
     test class that extends `AbstractSystemTest`. The integration cases include an update without timestamps, which
     fails when the entity mapper copies the timestamps.

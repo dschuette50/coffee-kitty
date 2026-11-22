@@ -52,6 +52,7 @@ class SecurityConfig {
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
                 it.requestMatchers(HttpMethod.POST, "/api/users").authenticated()
+                it.requestMatchers(HttpMethod.POST, "/api/users/*/cash-deposits").authenticated()
                 it.requestMatchers(HttpMethod.PUT, "/api/users/*/consumption").authenticated()
                 it.requestMatchers(HttpMethod.GET, "/api/users/*/consumption/corrections").authenticated()
                 it.anyRequest().permitAll()

@@ -7,6 +7,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Administrators can record cash deposits for users, including deactivated users. Each deposit increases the user's
+  personal balance and the kitty's cash balance in one transaction (FR-5).
+
 ## [0.2.1] - 2026-11-17
 
 ### Added

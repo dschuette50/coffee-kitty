@@ -30,6 +30,14 @@ class UserEntity : Entity() {
     @field:Column(name = "role")
     var role: Role? = null
 
+    /** The user's personal balance in cents. A negative value represents debt. */
+    @field:Column(name = "personal_balance_cents", nullable = false)
+    var personalBalanceCents: Long = 0
+
+    /** Whether the user is deactivated. A deactivated user can still receive deposits. */
+    @field:Column(nullable = false)
+    var deactivated: Boolean = false
+
     companion object {
         /** Name of the unique constraint on the login name. */
         const val LOGIN_NAME_UNIQUE_CONSTRAINT = "uq_users_login_name"

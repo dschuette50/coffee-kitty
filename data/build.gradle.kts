@@ -19,5 +19,6 @@ dependencies {
     compileOnly(libs.mapstruct)
     kapt(libs.mapstruct.processor)
 
+    testImplementation(libs.flyway.core)
     testImplementation(libs.testcontainers.postgresql)
 }

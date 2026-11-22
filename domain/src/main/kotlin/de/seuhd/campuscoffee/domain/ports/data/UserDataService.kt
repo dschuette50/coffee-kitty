@@ -18,4 +18,12 @@ interface UserDataService : CrudDataService<User, UUID> {
      * @throws NotFoundException if no user has [loginName]
      */
     fun getByLoginName(loginName: String): User
+
+    /**
+     * Loads and locks a user in the caller's transaction.
+     *
+     * @param id the user's id
+     * @throws NotFoundException if the user does not exist
+     */
+    fun getByIdForUpdate(id: UUID): User
 }
